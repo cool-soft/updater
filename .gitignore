@@ -1,4 +1,12 @@
+.idea/
+
+venv/
 
 **/__pycache__/
+*.py[cod]
 
 src/updater.egg-info/
+
+.coverage
+coverage_html_report/
+pytest-report.html
