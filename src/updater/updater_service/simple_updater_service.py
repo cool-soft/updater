@@ -95,7 +95,8 @@ class SimpleUpdaterService(UpdaterService):
 
         if item.get_last_updated_datetime() is None:
             need_update = True
-        elif item.get_next_update_datetime() <= update_start_datetime:
+        elif item.get_next_update_datetime() is not None and \
+                item.get_next_update_datetime() <= update_start_datetime:
             need_update = True
         else:
             need_update = self._is_item_dependencies_are_updated(item)
@@ -163,9 +164,10 @@ class SimpleUpdaterService(UpdaterService):
 
     async def _wait_for_timeout_or_service_stopping(self, timedelta_to_next_update: pd.Timedelta) -> None:
         sleep_coroutine = asyncio.sleep(timedelta_to_next_update.total_seconds())
-        service_stopping_coroutine = self._service_running_condition.wait_for(
-            lambda: self._stopping or not self._running
-        )
+        service_stopping_coroutine = self._wait_for_service_stopping_or_stopped()
         coroutines_to_wait = (sleep_coroutine, service_stopping_coroutine)
+        await asyncio.wait(coroutines_to_wait, return_when=asyncio.FIRST_COMPLETED)
+
+    async def _wait_for_service_stopping_or_stopped(self) -> None:
         async with self._service_running_condition:
-            await asyncio.wait(coroutines_to_wait, return_when=asyncio.FIRST_COMPLETED)
+            await self._service_running_condition.wait_for(lambda: self._stopping or not self._running)
