@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import List, Optional
+from typing import List, Optional, Awaitable
 
 import pandas as pd
 from dateutil.tz import tzlocal
@@ -16,20 +16,66 @@ class SimpleUpdaterService(UpdaterService):
         self._logger.debug("Creating instance")
 
         self._item_to_update = item_to_update
-
         self._logger.debug(f"Item to update is {item_to_update}")
+
+        self._service_running_condition = asyncio.Condition()
+        self._running = False
+        self._stopping = False
 
     def set_item_to_update(self, item_to_update: UpdatableItem) -> None:
         self._logger.debug(f"Item to update is set to {item_to_update}")
         self._item_to_update = item_to_update
 
-    async def run_updater_service_async(self) -> None:
-        self._logger.debug(f"Service is started")
+    async def join(self) -> None:
+        self._logger.debug("Waiting for service is stop")
+        async with self._service_running_condition:
+            service_stopped_coroutine = self._service_running_condition.wait_for(lambda: not self._running)
+            await service_stopped_coroutine
 
+    def is_running(self) -> bool:
+        self._logger.debug(f"Service running status is {self._running}")
+
+        return self._running
+
+    async def stop_service(self) -> None:
+        self._logger.debug("Stopping service")
+
+        await self._make_service_status_stopping()
+
+    async def _make_service_status_stopping(self):
+        self._logger.debug("Making service status \"stopping\"")
+
+        async with self._service_running_condition:
+            self._stopping = True
+            self._service_running_condition.notify_all()
+
+    async def run_updater_service_async(self) -> None:
+        self._logger.debug("Service is started")
+
+        await self._make_service_status_running()
         while True:
             self._logger.debug("Running updating cycle")
             await self._update_items()
             await self._sleep_to_next_update()
+            if self._stopping:
+                await self._make_service_status_stopped()
+                break
+
+    async def _make_service_status_running(self) -> None:
+        self._logger.debug("Making service status \"running\"")
+
+        async with self._service_running_condition:
+            self._stopping = False
+            self._running = True
+            self._service_running_condition.notify_all()
+
+    async def _make_service_status_stopped(self) -> None:
+        self._logger.debug("Making service status \"running\"")
+
+        async with self._service_running_condition:
+            self._stopping = False
+            self._running = False
+            self._service_running_condition.notify_all()
 
     async def _update_items(self) -> None:
         self._logger.debug("Requested items to update unpacked graph")
@@ -73,7 +119,7 @@ class SimpleUpdaterService(UpdaterService):
                 dependencies_updated = True
                 break
 
-        self._logger.debug(f"Item dependecies update status is {dependencies_updated}")
+        self._logger.debug(f"Item dependencies update status is {dependencies_updated}")
         return dependencies_updated
 
     async def _sleep_to_next_update(self) -> None:
@@ -85,7 +131,7 @@ class SimpleUpdaterService(UpdaterService):
         timedelta_to_next_update = max(timedelta_to_next_update, zero_timedelta)
 
         self._logger.debug(f"Sleeping {timedelta_to_next_update}")
-        await asyncio.sleep(timedelta_to_next_update.total_seconds())
+        await self._wait_for_timeout_or_service_stopping(timedelta_to_next_update)
 
     def _get_next_update_datetime(self) -> pd.Timestamp:
         self._logger.debug("Requested next update datetime")
@@ -114,3 +160,12 @@ class SimpleUpdaterService(UpdaterService):
 
         self._logger.debug(f"Dependency count of {item.__class__.__name__}: {len(unpacked_graph)}")
         return unpacked_graph
+
+    async def _wait_for_timeout_or_service_stopping(self, timedelta_to_next_update: pd.Timedelta) -> None:
+        sleep_coroutine = asyncio.sleep(timedelta_to_next_update.total_seconds())
+        service_stopping_coroutine = self._service_running_condition.wait_for(
+            lambda: self._stopping or not self._running
+        )
+        coroutines_to_wait = (sleep_coroutine, service_stopping_coroutine)
+        async with self._service_running_condition:
+            await asyncio.wait(coroutines_to_wait, return_when=asyncio.FIRST_COMPLETED)
