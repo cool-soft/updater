@@ -3,44 +3,39 @@ from datetime import timedelta
 
 import pytest
 
+from updatable_items_for_tests import SleepingUpdatableItem
 from updater.updater_service.simple_updater_service import SimpleUpdaterService
-from updater.updatable_item.updatable_item import UpdatableItem
-
-
-class UpdatableItemForTests(UpdatableItem):
-    async def _run_update_async(self) -> None:
-        await asyncio.sleep(0.1)
 
 
 class TestSimpleUpdaterService:
 
     @pytest.fixture
     def item_1(self):
-        return UpdatableItemForTests(
+        return SleepingUpdatableItem(
             update_interval=timedelta(seconds=2)
         )
 
     @pytest.fixture
     def item_2(self, item_1):
-        return UpdatableItemForTests(
+        return SleepingUpdatableItem(
             dependencies=[item_1]
         )
 
     @pytest.fixture
     def item_3(self, item_1):
-        return UpdatableItemForTests(
+        return SleepingUpdatableItem(
             dependencies=[item_1]
         )
 
     @pytest.fixture
     def item_4(self):
-        return UpdatableItemForTests(
+        return SleepingUpdatableItem(
             update_interval=timedelta(seconds=3)
         )
 
     @pytest.fixture
     def item_5(self, item_2, item_3, item_4):
-        return UpdatableItemForTests(
+        return SleepingUpdatableItem(
             dependencies=[item_2, item_3, item_4]
         )
 
