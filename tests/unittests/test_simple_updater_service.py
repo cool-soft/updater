@@ -1,7 +1,7 @@
 import asyncio
+from datetime import timedelta
 
 import pytest
-import pandas as pd
 
 from updater.updater_service.simple_updater_service import SimpleUpdaterService
 from updater.updatable_item.updatable_item import UpdatableItem
@@ -17,7 +17,7 @@ class TestSimpleUpdaterService:
     @pytest.fixture
     def item_1(self):
         return UpdatableItemForTests(
-            update_interval=pd.Timedelta(seconds=2)
+            update_interval=timedelta(seconds=2)
         )
 
     @pytest.fixture
@@ -35,7 +35,7 @@ class TestSimpleUpdaterService:
     @pytest.fixture
     def item_4(self):
         return UpdatableItemForTests(
-            update_interval=pd.Timedelta(seconds=3)
+            update_interval=timedelta(seconds=3)
         )
 
     @pytest.fixture
@@ -53,6 +53,7 @@ class TestSimpleUpdaterService:
         updater_service.set_item_to_update(item_5)
         return updater_service
 
+    # noinspection SpellCheckingInspection
     @pytest.mark.asyncio
     async def test_simple_updater_service(self,
                                           updater_service_with_items,
@@ -65,7 +66,7 @@ class TestSimpleUpdaterService:
         with capsys.disabled():
             asyncio.get_running_loop().set_debug(True)
 
-            task = asyncio.create_task(updater_service_with_items.run_updater_service_async())
+            asyncio.create_task(updater_service_with_items.run_updater_service_async())
             while not updater_service_with_items.is_running():
                 await asyncio.sleep(1)
             await asyncio.sleep(10)

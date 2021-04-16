@@ -2,9 +2,7 @@ import asyncio
 import logging
 from enum import Enum
 from typing import List, Optional
-
-import pandas as pd
-from dateutil.tz import tzlocal
+from datetime import datetime, timedelta, timezone
 
 from updater.updatable_item.updatable_item import UpdatableItem
 from updater.updater_service.updater_service import UpdaterService
@@ -87,7 +85,7 @@ class SimpleUpdaterService(UpdaterService):
     async def _update_items(self) -> None:
         self._logger.debug("Requested items to update unpacked graph")
 
-        update_start_datetime = pd.Timestamp.now(tz=tzlocal())
+        update_start_datetime = datetime.now(tz=timezone.utc)
         unpacked_dependencies_graph = self._get_unpacked_dependencies_graph(self._item_to_update)
         for item in unpacked_dependencies_graph:
             if self._is_need_update_item(item, update_start_datetime):
@@ -98,7 +96,7 @@ class SimpleUpdaterService(UpdaterService):
 
         self._logger.debug("Items are updated")
 
-    def _is_need_update_item(self, item: UpdatableItem, update_start_datetime: pd.Timestamp) -> bool:
+    def _is_need_update_item(self, item: UpdatableItem, update_start_datetime: datetime) -> bool:
         self._logger.debug("Check need update item")
 
         if item.get_last_updated_datetime() is None:
@@ -133,16 +131,16 @@ class SimpleUpdaterService(UpdaterService):
 
     async def _sleep_to_next_update(self) -> None:
         next_update_datetime = self._get_next_update_datetime()
-        datetime_now = pd.Timestamp.now(tz=tzlocal())
+        datetime_now = datetime.now(tz=timezone.utc)
 
         timedelta_to_next_update = next_update_datetime - datetime_now
-        zero_timedelta = pd.Timedelta(seconds=0)
+        zero_timedelta = timedelta(seconds=0)
         timedelta_to_next_update = max(timedelta_to_next_update, zero_timedelta)
 
         self._logger.debug(f"Sleeping {timedelta_to_next_update}")
         await self._wait_for_timeout_or_service_stopping(timedelta_to_next_update)
 
-    def _get_next_update_datetime(self) -> pd.Timestamp:
+    def _get_next_update_datetime(self) -> datetime:
         self._logger.debug("Requested next update datetime")
 
         next_update_datetime = self._item_to_update.get_next_update_datetime()
@@ -171,7 +169,7 @@ class SimpleUpdaterService(UpdaterService):
         self._logger.debug(f"Dependency count of {item.__class__.__name__}: {len(unpacked_graph)}")
         return unpacked_graph
 
-    async def _wait_for_timeout_or_service_stopping(self, timedelta_to_next_update: pd.Timedelta) -> None:
+    async def _wait_for_timeout_or_service_stopping(self, timedelta_to_next_update: timedelta) -> None:
         sleep_coroutine = asyncio.sleep(timedelta_to_next_update.total_seconds())
         service_stopping_coroutine = self._wait_for_service_stopping_or_stopped()
         coroutines_to_wait = (sleep_coroutine, service_stopping_coroutine)
