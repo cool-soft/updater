@@ -10,8 +10,9 @@ jobs:
 
   test-and-coverage-package:
     runs-on: [ubuntu-latest]
-    steps:
+    timeout-minutes: 5
 
+    steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v1
         with:
