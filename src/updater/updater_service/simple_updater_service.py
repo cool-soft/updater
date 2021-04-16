@@ -175,7 +175,10 @@ class SimpleUpdaterService(UpdaterService):
         sleep_coroutine = asyncio.sleep(timedelta_to_next_update.total_seconds())
         service_stopping_coroutine = self._wait_for_service_stopping_or_stopped()
         coroutines_to_wait = (sleep_coroutine, service_stopping_coroutine)
-        await asyncio.wait(coroutines_to_wait, return_when=asyncio.FIRST_COMPLETED)
+        done_futures, pending_futures = await asyncio.wait(coroutines_to_wait,
+                                                           return_when=asyncio.FIRST_COMPLETED)
+        for future in pending_futures:
+            future.cancel()
 
     async def _wait_for_service_stopping_or_stopped(self) -> None:
         async with self._service_running_state_condition:
