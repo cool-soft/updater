@@ -24,7 +24,6 @@ class UpdatableItem:
 
     def set_dependencies(self, dependencies: List[__qualname__]):
         self._logger.debug(f"Dependencies is set; count {len(self._dependencies)}")
-
         self._dependencies = dependencies
 
     def get_dependencies(self) -> List[__qualname__]:
