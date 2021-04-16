@@ -1,7 +1,3 @@
-import logging
-
-logging.getLogger().setLevel(logging.DEBUG)
-
 import asyncio
 
 import pytest
@@ -11,7 +7,7 @@ from updater.updater_service.simple_updater_service import SimpleUpdaterService
 from updater.updatable_item.updatable_item import UpdatableItem
 
 
-class SleepingUpdatableItem(UpdatableItem):
+class UpdatableItemForTests(UpdatableItem):
     async def _run_update_async(self) -> None:
         await asyncio.sleep(0.1)
 
@@ -20,31 +16,31 @@ class TestSimpleUpdaterService:
 
     @pytest.fixture
     def item_1(self):
-        return SleepingUpdatableItem(
+        return UpdatableItemForTests(
             update_interval=pd.Timedelta(seconds=2)
         )
 
     @pytest.fixture
     def item_2(self, item_1):
-        return SleepingUpdatableItem(
+        return UpdatableItemForTests(
             dependencies=[item_1]
         )
 
     @pytest.fixture
     def item_3(self, item_1):
-        return SleepingUpdatableItem(
+        return UpdatableItemForTests(
             dependencies=[item_1]
         )
 
     @pytest.fixture
     def item_4(self):
-        return SleepingUpdatableItem(
+        return UpdatableItemForTests(
             update_interval=pd.Timedelta(seconds=3)
         )
 
     @pytest.fixture
     def item_5(self, item_2, item_3, item_4):
-        return SleepingUpdatableItem(
+        return UpdatableItemForTests(
             dependencies=[item_2, item_3, item_4]
         )
 
