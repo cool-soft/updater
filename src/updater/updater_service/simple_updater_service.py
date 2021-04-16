@@ -34,11 +34,15 @@ class SimpleUpdaterService(UpdaterService):
         await self._wait_service_running_state(self.ServiceRunningState.STOPPED)
 
     async def _wait_service_running_state(self, *states_to_wait: ServiceRunningState) -> None:
+        self._logger.debug(f"Waiting for service states {states_to_wait}")
+
         async with self._running_state_condition:
-            status_wait_coroutine = self._running_state_condition.wait_for(
+            states_wait_coroutine = self._running_state_condition.wait_for(
                 lambda: self._running_state in states_to_wait
             )
-            await status_wait_coroutine
+            await states_wait_coroutine
+
+            self._logger.debug(f"Service state is {self._running_state}")
 
     def is_running(self) -> bool:
         self._logger.debug(f"Service running status is {self._running_state}")
@@ -161,6 +165,8 @@ class SimpleUpdaterService(UpdaterService):
         return unpacked_graph
 
     async def _wait_for_timeout_or_service_stopping(self, timedelta_to_next_update: timedelta) -> None:
+        self._logger.debug("Waiting for timeout or service stopping")
+
         sleep_coroutine = asyncio.sleep(timedelta_to_next_update.total_seconds())
         service_stopping_coroutine = self._wait_service_running_state(self.ServiceRunningState.STOPPING)
         coroutines_to_wait = (sleep_coroutine, service_stopping_coroutine)
