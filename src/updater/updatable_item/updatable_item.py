@@ -29,12 +29,10 @@ class UpdatableItem:
 
     def get_dependencies(self) -> List[__qualname__]:
         self._logger.debug(f"Dependencies list is requested")
-
         return self._dependencies.copy()
 
     def set_update_interval(self, update_interval: Union[timedelta, None]):
         self._logger.debug(f"Update interval is set to {update_interval}")
-
         self._update_interval = update_interval
 
     def get_next_update_datetime(self) -> Optional[datetime]:
@@ -49,11 +47,11 @@ class UpdatableItem:
 
     def get_last_updated_datetime(self) -> Optional[datetime]:
         self._logger.debug("Last update datetime is requested")
-
         self._logger.debug(f"Last update datetime is {self._last_update_datetime}")
         return self._last_update_datetime
 
     async def update_async(self) -> None:
+        self._logger.debug(f"Updating")
         await self._run_update_async()
         self._set_last_update_datetime_to_now()
 
@@ -62,4 +60,4 @@ class UpdatableItem:
 
     def _set_last_update_datetime_to_now(self) -> None:
         self._last_update_datetime = datetime.now(tz=timezone.utc)
-        self._logger.debug(f"Last update is set to {self._last_update_datetime}")
+        self._logger.debug(f"Last update datetime is set to {self._last_update_datetime}")
