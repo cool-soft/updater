@@ -56,20 +56,19 @@ class TestSimpleUpdaterService:
                                           item_2,
                                           item_3,
                                           item_4,
-                                          item_5,
-                                          capsys):
-        with capsys.disabled():
-            asyncio.get_running_loop().set_debug(True)
+                                          item_5):
 
-            asyncio.create_task(updater_service_with_items.run_updater_service_async())
-            while not updater_service_with_items.is_running():
-                await asyncio.sleep(1)
-            await asyncio.sleep(10)
-            await updater_service_with_items.stop_service()
-            await updater_service_with_items.join()
+        asyncio.get_running_loop().set_debug(True)
 
-            assert item_1.get_last_updated_datetime() < item_2.get_last_updated_datetime()
-            assert item_1.get_last_updated_datetime() < item_3.get_last_updated_datetime()
-            assert item_2.get_last_updated_datetime() < item_5.get_last_updated_datetime()
-            assert item_3.get_last_updated_datetime() < item_5.get_last_updated_datetime()
-            assert item_4.get_last_updated_datetime() < item_5.get_last_updated_datetime()
+        asyncio.create_task(updater_service_with_items.run_updater_service_async())
+        while not updater_service_with_items.is_running():
+            await asyncio.sleep(1)
+        await asyncio.sleep(10)
+        await updater_service_with_items.stop_service()
+        await updater_service_with_items.join()
+
+        assert item_1.get_last_updated_datetime() < item_2.get_last_updated_datetime()
+        assert item_1.get_last_updated_datetime() < item_3.get_last_updated_datetime()
+        assert item_2.get_last_updated_datetime() < item_5.get_last_updated_datetime()
+        assert item_3.get_last_updated_datetime() < item_5.get_last_updated_datetime()
+        assert item_4.get_last_updated_datetime() < item_5.get_last_updated_datetime()
