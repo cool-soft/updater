@@ -34,7 +34,8 @@ class SimpleUpdaterService(UpdaterService):
         await self._wait_service_running_state(self.ServiceRunningState.STOPPED)
 
     async def _wait_service_running_state(self, *states_to_wait: ServiceRunningState) -> None:
-        self._logger.debug(f"Waiting for service states {states_to_wait}")
+        state_names = list(map(lambda state: state.name, states_to_wait))
+        self._logger.debug(f"Waiting for service states {state_names}")
 
         async with self._running_state_condition:
             states_wait_coroutine = self._running_state_condition.wait_for(
@@ -42,7 +43,7 @@ class SimpleUpdaterService(UpdaterService):
             )
             await states_wait_coroutine
 
-            self._logger.debug(f"Service state is {self._running_state}")
+            self._logger.debug(f"Service state is {self._running_state.name}")
 
     def is_running(self) -> bool:
         self._logger.debug(f"Service running status is {self._running_state}")
@@ -73,7 +74,7 @@ class SimpleUpdaterService(UpdaterService):
             await self._set_service_running_state(self.ServiceRunningState.STOPPED)
 
     async def _set_service_running_state(self, state: ServiceRunningState):
-        self._logger.debug(f"Making service running state {state}")
+        self._logger.debug(f"Making service running state {state.name}")
         async with self._running_state_condition:
             self._running_state = state
             self._running_state_condition.notify_all()
