@@ -50,17 +50,17 @@ class TestSimpleUpdaterService:
 
     # noinspection SpellCheckingInspection
     @pytest.mark.asyncio
-    async def test_simple_updater_service(self,
-                                          updater_service_with_items,
-                                          item_1,
-                                          item_2,
-                                          item_3,
-                                          item_4,
-                                          item_5):
+    async def test_service(self,
+                           updater_service_with_items,
+                           item_1,
+                           item_2,
+                           item_3,
+                           item_4,
+                           item_5):
 
         asyncio.get_running_loop().set_debug(True)
 
-        asyncio.create_task(updater_service_with_items.run_updater_service_async())
+        await updater_service_with_items.start_service()
         while not updater_service_with_items.is_running():
             await asyncio.sleep(1)
         await asyncio.sleep(10)
