@@ -50,25 +50,33 @@ class SimpleUpdaterService(UpdaterService):
 
     async def stop_service(self) -> None:
         self._logger.debug("Stopping service")
-        await self._make_service_running_state(self.ServiceRunningState.STOPPING)
+        await self._set_service_running_state(self.ServiceRunningState.STOPPING)
 
-    async def _make_service_running_state(self, state: ServiceRunningState):
+    async def start_service(self) -> None:
+        self._logger.debug("Starting service")
+        await self._set_service_running_state(self.ServiceRunningState.RUNNING)
+        asyncio.create_task(self._run())
+
+    async def _run(self) -> None:
+        self._logger.debug("Service is started")
+
+        try:
+            while True:
+                self._logger.debug("Run update cycle")
+                await self._update_items()
+                await self._sleep_to_next_update()
+
+                if self._running_state is not self.ServiceRunningState.RUNNING:
+                    break
+
+        finally:
+            await self._set_service_running_state(self.ServiceRunningState.STOPPED)
+
+    async def _set_service_running_state(self, state: ServiceRunningState):
         self._logger.debug(f"Making service running state {state}")
         async with self._running_state_condition:
             self._running_state = state
             self._running_state_condition.notify_all()
-
-    async def run_updater_service_async(self) -> None:
-        self._logger.debug("Service is started")
-
-        await self._make_service_running_state(self.ServiceRunningState.RUNNING)
-
-        while self._running_state is self.ServiceRunningState.RUNNING:
-            self._logger.debug("Running updating cycle")
-            await self._update_items()
-            await self._sleep_to_next_update()
-
-        await self._make_service_running_state(self.ServiceRunningState.STOPPED)
 
     async def _update_items(self) -> None:
         self._logger.debug("Requested items to update unpacked graph")
