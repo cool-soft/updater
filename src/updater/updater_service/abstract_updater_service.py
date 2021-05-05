@@ -1,4 +1,4 @@
-class UpdaterService:
+class AbstractUpdaterService:
 
     async def join(self) -> None:
         raise NotImplementedError
