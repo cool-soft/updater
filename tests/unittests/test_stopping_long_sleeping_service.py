@@ -16,25 +16,17 @@ class TestStoppingLongSleepingService:
         )
 
     @pytest.fixture
-    def updater_service(self):
-        return SimpleUpdaterService()
-
-    @pytest.fixture
-    def updater_service_with_items(self, updater_service, item_to_update):
-        updater_service.set_item_to_update(item_to_update)
-        return updater_service
+    def updater_service(self, item_to_update):
+        return SimpleUpdaterService(item_to_update)
 
     # noinspection SpellCheckingInspection
     @pytest.mark.asyncio
     @pytest.mark.timeout(60)
-    async def test_service(self,
-                           updater_service_with_items,
-                           item_to_update):
-
+    async def test_service(self, updater_service, item_to_update):
         asyncio.get_running_loop().set_debug(True)
 
-        await updater_service_with_items.start_service()
-        while not updater_service_with_items.is_running():
+        await updater_service.start_service()
+        while not updater_service.is_running():
             await asyncio.sleep(1)
-        await updater_service_with_items.stop_service()
-        await updater_service_with_items.join()
+        await updater_service.stop_service()
+        await updater_service.join()

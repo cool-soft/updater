@@ -1,9 +1,11 @@
 import logging
-from typing import List, Optional, Union
 from datetime import datetime, timedelta, timezone
+from typing import List, Optional, Union
+
+from .abstract_updatable_item import AbstractUpdatableItem
 
 
-class UpdatableItem:
+class SimpleUpdatableItem(AbstractUpdatableItem):
 
     def __init__(self,
                  update_interval: Optional[timedelta] = None,
@@ -22,19 +24,11 @@ class UpdatableItem:
 
         self._last_update_datetime = None
 
-    def set_dependencies(self, dependencies: List[__qualname__]):
-        self._logger.debug(f"Dependencies is set; count {len(self._dependencies)}")
-        self._dependencies = dependencies
-
     def get_dependencies(self) -> List[__qualname__]:
         self._logger.debug(f"Dependencies list is requested")
         return self._dependencies.copy()
 
-    def set_update_interval(self, update_interval: Union[timedelta, None]):
-        self._logger.debug(f"Update interval is set to {update_interval}")
-        self._update_interval = update_interval
-
-    def get_next_update_datetime(self) -> Optional[datetime]:
+    def get_next_update_datetime(self) -> Union[datetime, None]:
         self._logger.debug("Requested next update datetime")
 
         next_update_datetime = None
@@ -44,7 +38,7 @@ class UpdatableItem:
         self._logger.debug(f"Next update datetime is {next_update_datetime}")
         return next_update_datetime
 
-    def get_last_updated_datetime(self) -> Optional[datetime]:
+    def get_last_update_datetime(self) -> Union[datetime, None]:
         self._logger.debug("Last update datetime is requested")
         self._logger.debug(f"Last update datetime is {self._last_update_datetime}")
         return self._last_update_datetime

@@ -34,41 +34,35 @@ class TestSimpleUpdaterService:
         )
 
     @pytest.fixture
-    def item_5(self, item_2, item_3, item_4):
+    def item_to_update(self, item_2, item_3, item_4):
         return SleepingUpdatableItem(
             dependencies=[item_2, item_3, item_4]
         )
 
     @pytest.fixture
-    def updater_service(self):
-        return SimpleUpdaterService()
-
-    @pytest.fixture
-    def updater_service_with_items(self, updater_service, item_5):
-        updater_service.set_item_to_update(item_5)
-        return updater_service
+    def updater_service(self, item_to_update):
+        return SimpleUpdaterService(item_to_update)
 
     # noinspection SpellCheckingInspection
     @pytest.mark.asyncio
     async def test_service(self,
-                           updater_service_with_items,
+                           updater_service,
                            item_1,
                            item_2,
                            item_3,
                            item_4,
-                           item_5):
-
+                           item_to_update):
         asyncio.get_running_loop().set_debug(True)
 
-        await updater_service_with_items.start_service()
-        while not updater_service_with_items.is_running():
+        await updater_service.start_service()
+        while not updater_service.is_running():
             await asyncio.sleep(1)
         await asyncio.sleep(10)
-        await updater_service_with_items.stop_service()
-        await updater_service_with_items.join()
+        await updater_service.stop_service()
+        await updater_service.join()
 
-        assert item_1.get_last_updated_datetime() < item_2.get_last_updated_datetime()
-        assert item_1.get_last_updated_datetime() < item_3.get_last_updated_datetime()
-        assert item_2.get_last_updated_datetime() < item_5.get_last_updated_datetime()
-        assert item_3.get_last_updated_datetime() < item_5.get_last_updated_datetime()
-        assert item_4.get_last_updated_datetime() < item_5.get_last_updated_datetime()
+        assert item_1.get_last_update_datetime() < item_2.get_last_update_datetime()
+        assert item_1.get_last_update_datetime() < item_3.get_last_update_datetime()
+        assert item_2.get_last_update_datetime() < item_to_update.get_last_update_datetime()
+        assert item_3.get_last_update_datetime() < item_to_update.get_last_update_datetime()
+        assert item_4.get_last_update_datetime() < item_to_update.get_last_update_datetime()
