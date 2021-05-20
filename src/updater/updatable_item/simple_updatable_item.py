@@ -25,7 +25,7 @@ class SimpleUpdatableItem(AbstractUpdatableItem):
         self._last_update_datetime = None
 
     def get_dependencies(self) -> List[__qualname__]:
-        self._logger.debug(f"Dependencies list is requested")
+        self._logger.debug("Dependencies list is requested")
         return self._dependencies.copy()
 
     def get_next_update_datetime(self) -> Union[datetime, None]:
@@ -44,7 +44,7 @@ class SimpleUpdatableItem(AbstractUpdatableItem):
         return self._last_update_datetime
 
     async def update_async(self) -> None:
-        self._logger.debug(f"Updating")
+        self._logger.debug("Updating")
         await self._run_update_async()
         self._set_last_update_datetime_to_now()
 

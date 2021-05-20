@@ -140,7 +140,7 @@ class SimpleUpdaterService(AbstractUpdaterService):
                                                    coroutines: List[Awaitable]
                                                    ) -> None:
         self._logger.debug("Waiting for coroutines and cancel not done")
-        done_futures, pending_futures = await asyncio.wait(
+        _, pending_futures = await asyncio.wait(
             coroutines,
             return_when=asyncio.FIRST_COMPLETED
         )
