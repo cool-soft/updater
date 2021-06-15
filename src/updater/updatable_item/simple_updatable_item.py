@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Union
 
-from updater.logger import updater_logger
+from updater.logger import logger
 
 from .abstract_updatable_item import AbstractUpdatableItem
 
@@ -19,32 +19,32 @@ class SimpleUpdatableItem(AbstractUpdatableItem):
 
         self._last_update_datetime = None
 
-        updater_logger.debug(
+        logger.debug(
             f"Creating instance:"
             f"dependency count: {len(self._dependencies)}"
             f"update_interval: {self._update_interval}"
         )
 
     def get_dependencies(self) -> List[__qualname__]:
-        updater_logger.debug("Dependencies list is requested")
+        logger.debug("Dependencies list is requested")
         return self._dependencies.copy()
 
     def get_next_update_datetime(self) -> Union[datetime, None]:
-        updater_logger.debug("Requested next update datetime")
+        logger.debug("Requested next update datetime")
 
         next_update_datetime = None
         if self._update_interval is not None:
             next_update_datetime = self._last_update_datetime + self._update_interval
 
-        updater_logger.debug(f"Next update datetime is {next_update_datetime}")
+        logger.debug(f"Next update datetime is {next_update_datetime}")
         return next_update_datetime
 
     def get_last_update_datetime(self) -> Union[datetime, None]:
-        updater_logger.debug(f"Requested last update datetime: {self._last_update_datetime}")
+        logger.debug(f"Requested last update datetime: {self._last_update_datetime}")
         return self._last_update_datetime
 
     async def update_async(self) -> None:
-        updater_logger.debug("Updating")
+        logger.debug("Updating")
         await self._run_update_async()
         self._set_last_update_datetime_to_now()
 
@@ -53,4 +53,4 @@ class SimpleUpdatableItem(AbstractUpdatableItem):
 
     def _set_last_update_datetime_to_now(self) -> None:
         self._last_update_datetime = datetime.now(tz=timezone.utc)
-        updater_logger.debug(f"Last update datetime is set to {self._last_update_datetime}")
+        logger.debug(f"Last update datetime is set to {self._last_update_datetime}")
