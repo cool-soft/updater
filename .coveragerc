@@ -1,8 +1,7 @@
 [run]
 branch = True
 command_line = -m pytest
-source =
-    src/
+source = src/
 
 [report]
 exclude_lines =
@@ -10,7 +9,4 @@ exclude_lines =
     raise NotImplementedError
 
 [html]
-directory = coverage-report-html
-
-[xml]
-output = coverage-report.xml
+directory = coverage-report

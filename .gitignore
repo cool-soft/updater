@@ -8,5 +8,4 @@ venv/
 src/updater.egg-info/
 
 .coverage
-coverage_html_report/
-pytest-report.html
+coverage_html/
