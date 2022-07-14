@@ -3,7 +3,7 @@ from datetime import timedelta
 
 import pytest
 
-from updatable_items_for_tests import SleepingUpdatableItem
+from updatable_items_for_tests import AsyncSleepingUpdatableItem
 from updater.updater_service.async_updater_service import AsyncUpdaterService
 
 
@@ -11,31 +11,31 @@ class TestAsyncUpdaterService:
 
     @pytest.fixture
     def item_1(self):
-        return SleepingUpdatableItem(
+        return AsyncSleepingUpdatableItem(
             update_interval=timedelta(seconds=2)
         )
 
     @pytest.fixture
     def item_2(self, item_1):
-        return SleepingUpdatableItem(
+        return AsyncSleepingUpdatableItem(
             dependencies=[item_1]
         )
 
     @pytest.fixture
     def item_3(self, item_1):
-        return SleepingUpdatableItem(
+        return AsyncSleepingUpdatableItem(
             dependencies=[item_1]
         )
 
     @pytest.fixture
     def item_4(self):
-        return SleepingUpdatableItem(
+        return AsyncSleepingUpdatableItem(
             update_interval=timedelta(seconds=3)
         )
 
     @pytest.fixture
     def item_to_update(self, item_2, item_3, item_4):
-        return SleepingUpdatableItem(
+        return AsyncSleepingUpdatableItem(
             dependencies=[item_2, item_3, item_4]
         )
 

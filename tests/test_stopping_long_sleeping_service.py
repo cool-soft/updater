@@ -3,7 +3,7 @@ from datetime import timedelta
 
 import pytest
 
-from updatable_items_for_tests import SleepingUpdatableItem
+from updatable_items_for_tests import AsyncSleepingUpdatableItem
 from updater.updater_service.async_updater_service import AsyncUpdaterService
 
 
@@ -11,7 +11,7 @@ class TestStoppingLongSleepingService:
 
     @pytest.fixture
     def item_to_update(self):
-        return SleepingUpdatableItem(
+        return AsyncSleepingUpdatableItem(
             update_interval=timedelta(hours=100)
         )
 

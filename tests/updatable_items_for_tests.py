@@ -3,7 +3,7 @@ import asyncio
 from updater.updatable_item.abstract_async_updatable_item import AbstractAsyncUpdatableItem
 
 
-class SleepingUpdatableItem(AbstractAsyncUpdatableItem):
+class AsyncSleepingUpdatableItem(AbstractAsyncUpdatableItem):
 
     def __init__(self,
                  *args,

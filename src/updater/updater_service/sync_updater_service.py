@@ -1,14 +1,14 @@
-import asyncio
+import threading
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import List, Awaitable
+from typing import Optional
 
 from updater.logging import logger
 from updater.updatable_item.abstract_sync_updatable_item import AbstractSyncUpdatableItem
+from updater.updater_service import helpers
 
 
 class SyncUpdaterService:
-
     class ServiceRunningState(Enum):
         RUNNING = 1
         STOPPING = 2
@@ -16,188 +16,65 @@ class SyncUpdaterService:
 
     def __init__(self, item_to_update: AbstractSyncUpdatableItem) -> None:
         self._item_to_update = item_to_update
-
-        self._running_state_condition = asyncio.Condition()
-        self._running_state = self.ServiceRunningState.STOPPED
-
+        self._service_state_condition = threading.Condition()
+        self._service_state = self.ServiceRunningState.STOPPED
+        self._runner_thread = threading.Thread(target=self._run)
         logger.debug(
             f"Creating instance:"
-            f"item_to_update: {item_to_update}"
+            f"item to update: {item_to_update}"
         )
 
-    def join(self) -> None:
+    def join(self, timeout: Optional[float] = None) -> None:
         logger.debug("Waiting for service stop")
-        raise NotImplementedError
+        self._runner_thread.join(timeout)
 
     def is_running(self) -> bool:
-        logger.debug(f"Service running status is {self._running_state}")
-        return self._running_state is not self.ServiceRunningState.STOPPED
+        logger.debug(f"Service running status is {self._service_state}")
+        return self._runner_thread.is_alive()
 
     def stop_service(self) -> None:
         logger.debug("Stopping service")
-        if self._running_state is not self.ServiceRunningState.STOPPED:
-            self._set_service_running_state(self.ServiceRunningState.STOPPING)
-        raise NotImplementedError
+        if self._runner_thread.is_alive():
+            with self._service_state_condition:
+                self._service_state = self.ServiceRunningState.STOPPING
+                self._service_state_condition.notify_all()
 
     def start_service(self) -> None:
         logger.debug("Starting service")
-
-        self._set_service_running_state(self.ServiceRunningState.RUNNING)
-        raise NotImplementedError
+        self._service_state = self.ServiceRunningState.RUNNING
+        try:
+            self._runner_thread.start()
+        except RuntimeError:
+            self._service_state = self.ServiceRunningState.STOPPED
+            raise
 
     def _run(self) -> None:
         logger.debug("Service is started")
-        raise NotImplementedError
         try:
-            while True:
+            while self._service_state is self.ServiceRunningState.RUNNING:
                 logger.debug("Run update cycle")
-                await self._update_items()
-                await self._wait_for_first_completed_coroutines([
-                    self._sleep_to_next_update(),
-                    self._wait_service_running_state(self.ServiceRunningState.STOPPING)
-                ])
-
-                if self._running_state is not self.ServiceRunningState.RUNNING:
-                    break
-
+                self._update_items()
+                self._sleep_to_next_update()
         finally:
-            await self._set_service_running_state(self.ServiceRunningState.STOPPED)
-
-    def _wait_service_running_state(self, state: ServiceRunningState) -> None:
-        logger.debug(f"Waiting for service state {state.name}")
-
-        raise NotImplementedError
-        async with self._running_state_condition:
-            await self._running_state_condition.wait_for(
-                lambda: self._running_state is state
-            )
-            logger.debug(f"Service state is {self._running_state.name}")
-
-    def _set_service_running_state(self, state: ServiceRunningState) -> None:
-        logger.debug(f"Making service running state {state.name}")
-        raise NotImplementedError
-        async with self._running_state_condition:
-            self._running_state = state
-            self._running_state_condition.notify_all()
+            self._service_state = self.ServiceRunningState.STOPPED
 
     def _update_items(self) -> None:
-        raise NotImplementedError
-        logger.debug("Requested items to update unpacked graph")
-
+        logger.debug("Updating item with dependencies")
         update_start_datetime = datetime.now(tz=timezone.utc)
-        unpacked_dependencies_graph = _get_update_items_graph()
-        for item in unpacked_dependencies_graph:
-            if _is_need_update_item(item, update_start_datetime):
+        items_to_update_list = helpers.get_dependencies_list(self._item_to_update)
+        items_to_update_list.append(self._item_to_update)
+        for item in items_to_update_list:
+            if helpers.is_need_update_item(item, update_start_datetime):
                 logger.debug(f"Updating item {item.__class__.__name__}")
-                await item.update()
-
+                # noinspection PyUnresolvedReferences
+                item.update()
         logger.debug("Items are updated")
 
-    def _is_need_update_item(self,
-                             item: AbstractSyncUpdatableItem,
-                             update_start_datetime: datetime
-                             ) -> bool:
-        logger.debug("Check need update item")
-
-        need_update = False
-        if self._item_update_datetime_has_come(item, update_start_datetime):
-            need_update = True
-        elif self._is_item_dependencies_are_updated(item):
-            need_update = True
-
-        logger.debug(f"Item need update status is {need_update}")
-        return need_update
-
-    # noinspection PyMethodMayBeStatic
-    def _item_update_datetime_has_come(self,
-                                       item: AbstractSyncUpdatableItem,
-                                       update_start_datetime: datetime
-                                       ) -> bool:
-        logger.debug(f"Check item update datetime has come {item.__class__.__name__}")
-
-        need_update = False
-        if item.get_last_update_datetime() is None:
-            need_update = True
-        else:
-            item_next_update_datetime = item.get_next_update_datetime()
-            if item_next_update_datetime is not None and \
-                    item_next_update_datetime <= update_start_datetime:
-                need_update = True
-
-        logger.debug(f"Item need update by datetime is {need_update}")
-        return need_update
-
-    def _is_item_dependencies_are_updated(self,
-                                          item: AbstractSyncUpdatableItem
-                                          ) -> bool:
-        logger.debug(f"Check that item dependencies are updated for {item}")
-
-        item_last_update_datetime = item.get_last_update_datetime()
-        item_dependencies = self._get_unpacked_dependencies_graph(item)
-        dependencies_updated = False
-        for dependency in item_dependencies:
-            if dependency.get_last_update_datetime() >= item_last_update_datetime:
-                dependencies_updated = True
-                break
-
-        logger.debug(f"Item dependencies update status is {dependencies_updated}")
-        return dependencies_updated
-
-    # noinspection PyMethodMayBeStatic
-    async def _wait_for_first_completed_coroutines(self,
-                                                   coroutines: List[Awaitable]
-                                                   ) -> None:
-        logger.debug("Waiting for coroutines and cancel not done")
-        _, pending_futures = await asyncio.wait(
-            coroutines,
-            return_when=asyncio.FIRST_COMPLETED
-        )
-        for future in pending_futures:
-            future.cancel()
-
-    async def _sleep_to_next_update(self) -> None:
-        next_update_datetime = self._get_next_update_datetime()
+    def _sleep_to_next_update(self) -> None:
+        next_update_datetime = helpers.calc_next_update_datetime(self._item_to_update)
         datetime_now = datetime.now(tz=timezone.utc)
-
         timedelta_to_next_update = next_update_datetime - datetime_now
-        zero_timedelta = timedelta(seconds=0)
-        timedelta_to_next_update = max(timedelta_to_next_update, zero_timedelta)
-
+        timedelta_to_next_update = max(timedelta_to_next_update, timedelta(seconds=0))
         logger.debug(f"Sleeping {timedelta_to_next_update}")
-        await asyncio.sleep(timedelta_to_next_update.total_seconds())
-
-    def _get_next_update_datetime(self) -> datetime:
-        logger.debug("Requested next update datetime")
-
-        next_update_datetime = None
-        unpacked_dependencies_graph = self._get_update_items_graph()
-        for item in unpacked_dependencies_graph:
-            item_next_update_datetime = item.get_next_update_datetime()
-            if next_update_datetime is None:
-                next_update_datetime = item_next_update_datetime
-            elif item_next_update_datetime is not None:
-                next_update_datetime = min(next_update_datetime, item_next_update_datetime)
-
-        logger.debug(f"Next update datetime is {next_update_datetime}")
-        return next_update_datetime
-
-    def _get_update_items_graph(self) -> List[AbstractAsyncUpdatableItem]:
-        unpacked_dependencies_graph = self._get_unpacked_dependencies_graph(self._item_to_update)
-        unpacked_dependencies_graph.append(self._item_to_update)
-        return unpacked_dependencies_graph
-
-    def _get_unpacked_dependencies_graph(self,
-                                         item: AbstractAsyncUpdatableItem
-                                         ) -> List[AbstractAsyncUpdatableItem]:
-        logger.debug("Unpacked dependencies graph is requested")
-
-        unpacked_graph = []
-        for dependency in item.get_dependencies():
-            sub_graph = self._get_unpacked_dependencies_graph(dependency)
-            for sub_item in sub_graph:
-                if sub_item not in unpacked_graph:
-                    unpacked_graph.append(sub_item)
-            unpacked_graph.append(dependency)
-
-        logger.debug(f"Dependency count of {item.__class__.__name__}: {len(unpacked_graph)}")
-        return unpacked_graph
+        with self._service_state_condition:
+            self._service_state_condition.wait(timedelta_to_next_update.total_seconds())

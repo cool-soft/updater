@@ -70,7 +70,6 @@ def is_need_update_item(item: AbstractUpdatableItem,
 
 def calc_next_update_datetime(item: AbstractUpdatableItem) -> datetime:
     logger.debug("Requested next update datetime")
-
     next_update_datetime = None
     items_to_update_list = get_dependencies_list(item)
     items_to_update_list.append(item)
@@ -80,6 +79,5 @@ def calc_next_update_datetime(item: AbstractUpdatableItem) -> datetime:
             next_update_datetime = item_next_update_datetime
         elif item_next_update_datetime is not None:
             next_update_datetime = min(next_update_datetime, item_next_update_datetime)
-
     logger.debug(f"Next update datetime is {next_update_datetime}")
     return next_update_datetime
