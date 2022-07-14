@@ -1,9 +1,9 @@
 import asyncio
 
-from updater.updatable_item.simple_updatable_item import SimpleUpdatableItem
+from updater.updatable_item.abstract_async_updatable_item import AbstractAsyncUpdatableItem
 
 
-class SleepingUpdatableItem(SimpleUpdatableItem):
+class SleepingUpdatableItem(AbstractAsyncUpdatableItem):
 
     def __init__(self,
                  *args,
@@ -13,5 +13,5 @@ class SleepingUpdatableItem(SimpleUpdatableItem):
         super().__init__(*args, **kwargs)
         self._time_to_sleep = time_to_sleep
 
-    async def _run_update_async(self) -> None:
+    async def _run_update(self) -> None:
         await asyncio.sleep(self._time_to_sleep)

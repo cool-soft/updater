@@ -4,10 +4,10 @@ from datetime import timedelta
 import pytest
 
 from updatable_items_for_tests import SleepingUpdatableItem
-from updater.updater_service.simple_updater_service import SimpleUpdaterService
+from updater.updater_service.async_updater_service import AsyncUpdaterService
 
 
-class TestSimpleUpdaterService:
+class TestAsyncUpdaterService:
 
     @pytest.fixture
     def item_1(self):
@@ -41,7 +41,7 @@ class TestSimpleUpdaterService:
 
     @pytest.fixture
     def updater_service(self, item_to_update):
-        return SimpleUpdaterService(item_to_update)
+        return AsyncUpdaterService(item_to_update)
 
     # noinspection SpellCheckingInspection
     @pytest.mark.asyncio

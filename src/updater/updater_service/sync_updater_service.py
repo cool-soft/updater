@@ -3,20 +3,18 @@ from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import List, Awaitable
 
-from updater.logger import logger
-
-from .abstract_updater_service import AbstractUpdaterService
-from ..updatable_item.abstract_updatable_item import AbstractUpdatableItem
+from updater.logging import logger
+from updater.updatable_item.abstract_sync_updatable_item import AbstractSyncUpdatableItem
 
 
-class SimpleUpdaterService(AbstractUpdaterService):
+class SyncUpdaterService:
 
     class ServiceRunningState(Enum):
         RUNNING = 1
         STOPPING = 2
         STOPPED = 3
 
-    def __init__(self, item_to_update: AbstractUpdatableItem) -> None:
+    def __init__(self, item_to_update: AbstractSyncUpdatableItem) -> None:
         self._item_to_update = item_to_update
 
         self._running_state_condition = asyncio.Condition()
@@ -27,26 +25,29 @@ class SimpleUpdaterService(AbstractUpdaterService):
             f"item_to_update: {item_to_update}"
         )
 
-    async def join(self) -> None:
+    def join(self) -> None:
         logger.debug("Waiting for service stop")
-        await self._wait_service_running_state(self.ServiceRunningState.STOPPED)
+        raise NotImplementedError
 
     def is_running(self) -> bool:
         logger.debug(f"Service running status is {self._running_state}")
         return self._running_state is not self.ServiceRunningState.STOPPED
 
-    async def stop_service(self) -> None:
+    def stop_service(self) -> None:
         logger.debug("Stopping service")
         if self._running_state is not self.ServiceRunningState.STOPPED:
-            await self._set_service_running_state(self.ServiceRunningState.STOPPING)
+            self._set_service_running_state(self.ServiceRunningState.STOPPING)
+        raise NotImplementedError
 
-    async def start_service(self) -> None:
+    def start_service(self) -> None:
         logger.debug("Starting service")
-        await self._set_service_running_state(self.ServiceRunningState.RUNNING)
-        asyncio.create_task(self._run())
 
-    async def _run(self) -> None:
+        self._set_service_running_state(self.ServiceRunningState.RUNNING)
+        raise NotImplementedError
+
+    def _run(self) -> None:
         logger.debug("Service is started")
+        raise NotImplementedError
         try:
             while True:
                 logger.debug("Run update cycle")
@@ -62,35 +63,38 @@ class SimpleUpdaterService(AbstractUpdaterService):
         finally:
             await self._set_service_running_state(self.ServiceRunningState.STOPPED)
 
-    async def _wait_service_running_state(self, state: ServiceRunningState) -> None:
+    def _wait_service_running_state(self, state: ServiceRunningState) -> None:
         logger.debug(f"Waiting for service state {state.name}")
 
+        raise NotImplementedError
         async with self._running_state_condition:
             await self._running_state_condition.wait_for(
                 lambda: self._running_state is state
             )
             logger.debug(f"Service state is {self._running_state.name}")
 
-    async def _set_service_running_state(self, state: ServiceRunningState) -> None:
+    def _set_service_running_state(self, state: ServiceRunningState) -> None:
         logger.debug(f"Making service running state {state.name}")
+        raise NotImplementedError
         async with self._running_state_condition:
             self._running_state = state
             self._running_state_condition.notify_all()
 
-    async def _update_items(self) -> None:
+    def _update_items(self) -> None:
+        raise NotImplementedError
         logger.debug("Requested items to update unpacked graph")
 
         update_start_datetime = datetime.now(tz=timezone.utc)
-        unpacked_dependencies_graph = self._get_update_items_graph()
+        unpacked_dependencies_graph = _get_update_items_graph()
         for item in unpacked_dependencies_graph:
-            if self._is_need_update_item(item, update_start_datetime):
+            if _is_need_update_item(item, update_start_datetime):
                 logger.debug(f"Updating item {item.__class__.__name__}")
-                await item.update_async()
+                await item.update()
 
         logger.debug("Items are updated")
 
     def _is_need_update_item(self,
-                             item: AbstractUpdatableItem,
+                             item: AbstractSyncUpdatableItem,
                              update_start_datetime: datetime
                              ) -> bool:
         logger.debug("Check need update item")
@@ -106,7 +110,7 @@ class SimpleUpdaterService(AbstractUpdaterService):
 
     # noinspection PyMethodMayBeStatic
     def _item_update_datetime_has_come(self,
-                                       item: AbstractUpdatableItem,
+                                       item: AbstractSyncUpdatableItem,
                                        update_start_datetime: datetime
                                        ) -> bool:
         logger.debug(f"Check item update datetime has come {item.__class__.__name__}")
@@ -124,7 +128,7 @@ class SimpleUpdaterService(AbstractUpdaterService):
         return need_update
 
     def _is_item_dependencies_are_updated(self,
-                                          item: AbstractUpdatableItem
+                                          item: AbstractSyncUpdatableItem
                                           ) -> bool:
         logger.debug(f"Check that item dependencies are updated for {item}")
 
@@ -177,14 +181,14 @@ class SimpleUpdaterService(AbstractUpdaterService):
         logger.debug(f"Next update datetime is {next_update_datetime}")
         return next_update_datetime
 
-    def _get_update_items_graph(self) -> List[AbstractUpdatableItem]:
+    def _get_update_items_graph(self) -> List[AbstractAsyncUpdatableItem]:
         unpacked_dependencies_graph = self._get_unpacked_dependencies_graph(self._item_to_update)
         unpacked_dependencies_graph.append(self._item_to_update)
         return unpacked_dependencies_graph
 
     def _get_unpacked_dependencies_graph(self,
-                                         item: AbstractUpdatableItem
-                                         ) -> List[AbstractUpdatableItem]:
+                                         item: AbstractAsyncUpdatableItem
+                                         ) -> List[AbstractAsyncUpdatableItem]:
         logger.debug("Unpacked dependencies graph is requested")
 
         unpacked_graph = []
