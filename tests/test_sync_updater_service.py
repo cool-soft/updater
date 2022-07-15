@@ -55,7 +55,6 @@ class TestSyncUpdaterService:
         updater_service.start_service()
         while not updater_service.is_running():
             sleep(1)
-        sleep(10)
         updater_service.stop_service()
         updater_service.join()
 
