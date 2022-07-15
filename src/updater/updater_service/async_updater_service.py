@@ -59,7 +59,7 @@ class AsyncUpdaterService:
         finally:
             await self._set_service_running_state(self.ServiceRunningState.STOPPED)
 
-    async def _set_service_running_state(self, state):
+    async def _set_service_running_state(self, state: ServiceRunningState):
         async with self._running_state_condition:
             self._running_state = state
             self._running_state_condition.notify_all()
