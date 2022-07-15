@@ -10,7 +10,7 @@ from updater.updater_service import helpers
 
 class SyncUpdaterService:
 
-    class ServiceRunningState(Enum):
+    class _ServiceRunningState(Enum):
         RUNNING = 1
         STOPPING = 2
         STOPPED = 3
@@ -18,7 +18,7 @@ class SyncUpdaterService:
     def __init__(self, item_to_update: AbstractSyncUpdatableItem) -> None:
         self._item_to_update = item_to_update
         self._running_state_condition = threading.Condition()
-        self._running_state = self.ServiceRunningState.STOPPED
+        self._running_state = self._ServiceRunningState.STOPPED
         self._runner_thread = threading.Thread(target=self._run)
         logger.debug(
             f"Creating instance:"
@@ -31,32 +31,32 @@ class SyncUpdaterService:
 
     def is_running(self) -> bool:
         logger.debug(f"Service running status is {self._running_state}")
-        return self._running_state is not self.ServiceRunningState.STOPPED
+        return self._running_state is not self._ServiceRunningState.STOPPED
 
     def stop_service(self) -> None:
         logger.debug("Stopping service")
-        if self._running_state is self.ServiceRunningState.RUNNING:
-            self._set_service_running_state(self.ServiceRunningState.STOPPING)
+        if self._running_state is self._ServiceRunningState.RUNNING:
+            self._set_service_running_state(self._ServiceRunningState.STOPPING)
 
     def start_service(self) -> None:
         logger.debug("Starting service")
-        if self._running_state is self.ServiceRunningState.STOPPED:
-            self._running_state = self.ServiceRunningState.RUNNING
+        if self._running_state is self._ServiceRunningState.STOPPED:
+            self._running_state = self._ServiceRunningState.RUNNING
             try:
                 self._runner_thread.start()
             except RuntimeError:
-                self._set_service_running_state(self.ServiceRunningState.STOPPED)
+                self._set_service_running_state(self._ServiceRunningState.STOPPED)
                 raise
 
     def _run(self) -> None:
         logger.debug("Service is started")
         try:
-            while self._running_state is self.ServiceRunningState.RUNNING:
+            while self._running_state is self._ServiceRunningState.RUNNING:
                 logger.debug("Run update cycle")
                 self._update_items()
                 self._sleep_to_next_update()
         finally:
-            self._set_service_running_state(self.ServiceRunningState.STOPPED)
+            self._set_service_running_state(self._ServiceRunningState.STOPPED)
 
     def _update_items(self) -> None:
         logger.debug("Updating item with dependencies")
@@ -76,12 +76,12 @@ class SyncUpdaterService:
         timedelta_to_next_update = max(timedelta_to_next_update, timedelta(seconds=0))
         logger.debug(f"Sleeping {timedelta_to_next_update}")
         self._wait_service_running_state(
-            self.ServiceRunningState.STOPPING,
+            self._ServiceRunningState.STOPPING,
             timedelta_to_next_update.total_seconds()
         )
 
     def _wait_service_running_state(self,
-                                    state: ServiceRunningState,
+                                    state: _ServiceRunningState,
                                     timeout: Optional[float] = None
                                     ) -> None:
         logger.debug(f"Waiting for service state {state.name}")
@@ -92,7 +92,7 @@ class SyncUpdaterService:
             )
         logger.debug(f"Service state {self._running_state.name} is reached")
 
-    def _set_service_running_state(self, state: ServiceRunningState):
+    def _set_service_running_state(self, state: _ServiceRunningState):
         logger.debug(f"Set service running state to {state.name}")
         with self._running_state_condition:
             self._running_state = state

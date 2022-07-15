@@ -10,7 +10,7 @@ from updater.updatable_item.abstract_async_updatable_item import AbstractAsyncUp
 
 class AsyncUpdaterService:
 
-    class ServiceRunningState(Enum):
+    class _ServiceRunningState(Enum):
         RUNNING = 1
         STOPPING = 2
         STOPPED = 3
@@ -18,7 +18,7 @@ class AsyncUpdaterService:
     def __init__(self, item_to_update: AbstractAsyncUpdatableItem) -> None:
         self._item_to_update = item_to_update
         self._running_state_condition = asyncio.Condition()
-        self._running_state = self.ServiceRunningState.STOPPED
+        self._running_state = self._ServiceRunningState.STOPPED
         logger.debug(
             f"Creating instance:"
             f"item_to_update: {item_to_update}"
@@ -26,45 +26,45 @@ class AsyncUpdaterService:
 
     async def join(self, timeout: Optional[float] = None) -> None:
         logger.debug("Waiting for service stop")
-        running_state_coroutine = self._wait_service_running_state(self.ServiceRunningState.STOPPED)
+        running_state_coroutine = self._wait_service_running_state(self._ServiceRunningState.STOPPED)
         try:
             await asyncio.wait_for(running_state_coroutine, timeout=timeout)
         except asyncio.TimeoutError:
             pass
 
     def is_running(self) -> bool:
-        return self._running_state is not self.ServiceRunningState.STOPPED
+        return self._running_state is not self._ServiceRunningState.STOPPED
 
     async def stop_service(self) -> None:
         logger.debug("Stopping service")
-        if self._running_state is self.ServiceRunningState.RUNNING:
-            await self._set_service_running_state(self.ServiceRunningState.STOPPING)
+        if self._running_state is self._ServiceRunningState.RUNNING:
+            await self._set_service_running_state(self._ServiceRunningState.STOPPING)
 
     async def start_service(self) -> None:
         logger.debug("Starting service")
-        if self._running_state is self.ServiceRunningState.STOPPED:
-            self._running_state = self.ServiceRunningState.RUNNING
+        if self._running_state is self._ServiceRunningState.STOPPED:
+            self._running_state = self._ServiceRunningState.RUNNING
             asyncio.create_task(self._run())
 
     async def _run(self) -> None:
         logger.debug("Service is started")
         try:
-            while self._running_state is self.ServiceRunningState.RUNNING:
+            while self._running_state is self._ServiceRunningState.RUNNING:
                 logger.debug("Run update cycle")
                 await self._update_items()
                 await self._wait_for_first_completed_coroutine([
                     self._sleep_to_next_update(),
-                    self._wait_service_running_state(self.ServiceRunningState.STOPPING)
+                    self._wait_service_running_state(self._ServiceRunningState.STOPPING)
                 ])
         finally:
-            await self._set_service_running_state(self.ServiceRunningState.STOPPED)
+            await self._set_service_running_state(self._ServiceRunningState.STOPPED)
 
-    async def _set_service_running_state(self, state: ServiceRunningState):
+    async def _set_service_running_state(self, state: _ServiceRunningState):
         async with self._running_state_condition:
             self._running_state = state
             self._running_state_condition.notify_all()
 
-    async def _wait_service_running_state(self, state: ServiceRunningState) -> None:
+    async def _wait_service_running_state(self, state: _ServiceRunningState) -> None:
         logger.debug(f"Waiting for service state {state.name}")
         async with self._running_state_condition:
             await self._running_state_condition.wait_for(
