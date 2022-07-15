@@ -9,7 +9,7 @@ from updater.updater_service import helpers
 
 
 class SyncUpdaterService:
-    
+
     class ServiceRunningState(Enum):
         RUNNING = 1
         STOPPING = 2
