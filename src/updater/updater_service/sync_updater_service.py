@@ -1,3 +1,4 @@
+import queue
 import threading
 from datetime import datetime, timedelta, timezone
 from enum import Enum
@@ -17,13 +18,24 @@ class SyncUpdaterService:
 
     def __init__(self, item_to_update: AbstractSyncUpdatableItem) -> None:
         self._item_to_update = item_to_update
-        self._running_state_condition = threading.Condition()
+        self._items_forced_update_queue = queue.Queue()
+        self._wait_signal_condition = threading.Condition()
         self._running_state = self._ServiceRunningState.STOPPED
         self._runner_thread = threading.Thread(target=self._run)
         logger.debug(
             f"Creating instance:"
             f"item to update: {item_to_update}"
         )
+
+    def force_item_update(self, item: AbstractSyncUpdatableItem):
+        logger.debug(f"Forcing item update {item.__class__.__name__}")
+        all_items = helpers.get_dependencies_list(self._item_to_update)
+        all_items.append(self._item_to_update)
+        if item not in all_items:
+            raise ValueError(f"Item {item} does not owned by service")
+        with self._wait_signal_condition:
+            self._items_forced_update_queue.put(item)
+            self._wait_signal_condition.notify_all()
 
     def join(self, timeout: Optional[float] = None) -> None:
         logger.debug("Waiting for service stop")
@@ -36,7 +48,9 @@ class SyncUpdaterService:
     def stop_service(self) -> None:
         logger.debug("Stopping service")
         if self._running_state is self._ServiceRunningState.RUNNING:
-            self._set_service_running_state(self._ServiceRunningState.STOPPING)
+            with self._wait_signal_condition:
+                self._running_state = self._ServiceRunningState.STOPPING
+                self._wait_signal_condition.notify_all()
 
     def start_service(self) -> None:
         logger.debug("Starting service")
@@ -45,20 +59,25 @@ class SyncUpdaterService:
             try:
                 self._runner_thread.start()
             except RuntimeError:
-                self._set_service_running_state(self._ServiceRunningState.STOPPED)
+                self._running_state = self._ServiceRunningState.STOPPED
                 raise
+        else:
+            logger.debug("Service already started")
 
     def _run(self) -> None:
         logger.debug("Service is started")
         try:
             while self._running_state is self._ServiceRunningState.RUNNING:
                 logger.debug("Run update cycle")
-                self._update_items()
-                self._sleep_to_next_update()
+                self._update_one_item_from_queue()
+                self._update_items_full_cycle()
+                with self._wait_signal_condition:
+                    if self._items_forced_update_queue.empty():
+                        self._sleep_to_next_update_or_signal()
         finally:
-            self._set_service_running_state(self._ServiceRunningState.STOPPED)
+            self._running_state = self._ServiceRunningState.STOPPED
 
-    def _update_items(self) -> None:
+    def _update_items_full_cycle(self) -> None:
         logger.debug("Updating item with dependencies")
         update_start_datetime = datetime.now(tz=timezone.utc)
         items_to_update_list = helpers.get_dependencies_list(self._item_to_update)
@@ -70,30 +89,24 @@ class SyncUpdaterService:
                 item.update()
         logger.debug("Items are updated")
 
-    def _sleep_to_next_update(self) -> None:
+    def _sleep_to_next_update_or_signal(self) -> None:
         next_update_datetime = helpers.calc_next_update_datetime(self._item_to_update)
         timedelta_to_next_update = next_update_datetime - datetime.now(tz=timezone.utc)
         timedelta_to_next_update = max(timedelta_to_next_update, timedelta(seconds=0))
         logger.debug(f"Sleeping {timedelta_to_next_update}")
-        self._wait_service_running_state(
-            self._ServiceRunningState.STOPPING,
-            timedelta_to_next_update.total_seconds()
-        )
+        with self._wait_signal_condition:
+            timeout_expired = self._wait_signal_condition.wait(timedelta_to_next_update.total_seconds())
+        if timeout_expired:
+            logger.debug("Waked up by timeout")
+        else:
+            logger.debug("Waked up by signal")
 
-    def _wait_service_running_state(self,
-                                    state: _ServiceRunningState,
-                                    timeout: Optional[float] = None
-                                    ) -> None:
-        logger.debug(f"Waiting for service state {state.name}")
-        with self._running_state_condition:
-            self._running_state_condition.wait_for(
-                lambda: self._running_state is state,
-                timeout=timeout
-            )
-        logger.debug(f"Service state {self._running_state.name} is reached")
-
-    def _set_service_running_state(self, state: _ServiceRunningState):
-        logger.debug(f"Set service running state to {state.name}")
-        with self._running_state_condition:
-            self._running_state = state
-            self._running_state_condition.notify_all()
+    def _update_one_item_from_queue(self):
+        logger.debug("Requested forced item update")
+        if not self._items_forced_update_queue.empty():
+            logger.debug("Queue is not empty")
+            item_to_update: AbstractSyncUpdatableItem = self._items_forced_update_queue.get()
+            logger.debug(f"Updating item {item_to_update.__class__.__name__}")
+            item_to_update.update()
+        else:
+            logger.debug("Queue is empty!!!")
