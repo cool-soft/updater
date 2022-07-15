@@ -45,6 +45,7 @@ class TestAsyncUpdaterService:
 
     # noinspection SpellCheckingInspection
     @pytest.mark.asyncio
+    @pytest.mark.timeout(60)
     async def test_service(self,
                            updater_service,
                            item_1,
