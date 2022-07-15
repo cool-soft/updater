@@ -40,7 +40,7 @@ class SyncUpdaterService:
 
     def start_service(self) -> None:
         logger.debug("Starting service")
-        if self._set_service_running_state is self.ServiceRunningState.STOPPED:
+        if self._running_state is self.ServiceRunningState.STOPPED:
             self._running_state = self.ServiceRunningState.RUNNING
             try:
                 self._runner_thread.start()
