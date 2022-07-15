@@ -22,17 +22,14 @@ class SyncUpdaterService:
         self._wait_signal_condition = threading.Condition()
         self._running_state = self._ServiceRunningState.STOPPED
         self._runner_thread = threading.Thread(target=self._run)
-        logger.debug(
-            f"Creating instance:"
-            f"item to update: {item_to_update}"
-        )
+        logger.debug(f"Creating instance. Item to update: {item_to_update}")
 
     def force_item_update(self, item: AbstractSyncUpdatableItem):
-        logger.debug(f"Forcing item update {item.__class__.__name__}")
+        logger.debug(f"Force item update {item.__class__.__name__}")
         all_items = helpers.get_dependencies_list(self._item_to_update)
         all_items.append(self._item_to_update)
         if item not in all_items:
-            raise ValueError(f"Item {item} does not owned by service")
+            raise ValueError(f"Service does not own item  {item}")
         with self._wait_signal_condition:
             self._items_forced_update_queue.put(item)
             self._wait_signal_condition.notify_all()
