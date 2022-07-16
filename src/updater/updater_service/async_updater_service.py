@@ -37,13 +37,17 @@ class AsyncUpdaterService:
         wait_service_stop_coroutine = self._wait_signal_condition.wait_for(
             lambda: self._running_state is self._ServiceRunningState.STOPPED,
         )
-        try:
-            async with self._wait_signal_condition:
-                await asyncio.wait_for(wait_service_stop_coroutine, timeout=timeout)
-        except asyncio.TimeoutError:
-            pass
+        async with self._wait_signal_condition:
+            try:
+                await asyncio.wait_for(
+                    wait_service_stop_coroutine,
+                    timeout=timeout
+                )
+            except asyncio.TimeoutError:
+                pass
 
     def is_running(self) -> bool:
+        logger.debug(f"Service running status is {self._running_state}")
         return self._running_state is not self._ServiceRunningState.STOPPED
 
     async def stop_service(self) -> None:
