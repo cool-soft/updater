@@ -18,7 +18,8 @@ class AsyncUpdaterService:
     def __init__(self, item_to_update: AbstractAsyncUpdatableItem) -> None:
         self._item_to_update = item_to_update
         self._items_forced_update_queue = asyncio.Queue()
-        self._wait_signal_condition = asyncio.Condition()
+        self._wake_up_event = asyncio.Event()
+        self._running_state_condition = asyncio.Condition()
         self._running_state = self._ServiceRunningState.STOPPED
         logger.debug(f"Creating instance. Item to update: {item_to_update}")
 
@@ -28,16 +29,15 @@ class AsyncUpdaterService:
         all_items.append(self._item_to_update)
         if item not in all_items:
             raise ValueError(f"Service does not own item  {item}")
-        async with self._wait_signal_condition:
-            await self._items_forced_update_queue.put(item)
-            self._wait_signal_condition.notify_all()
+        await self._items_forced_update_queue.put(item)
+        self._wake_up_event.set()
 
     async def join(self, timeout: Optional[float] = None) -> None:
         logger.debug("Waiting for service stop")
-        wait_service_stop_coroutine = self._wait_signal_condition.wait_for(
+        wait_service_stop_coroutine = self._running_state_condition.wait_for(
             lambda: self._running_state is self._ServiceRunningState.STOPPED,
         )
-        async with self._wait_signal_condition:
+        async with self._running_state_condition:
             try:
                 await asyncio.wait_for(
                     wait_service_stop_coroutine,
@@ -54,6 +54,7 @@ class AsyncUpdaterService:
         logger.debug("Stopping service")
         if self._running_state is self._ServiceRunningState.RUNNING:
             await self._set_running_state(self._ServiceRunningState.STOPPING)
+            self._wake_up_event.set()
 
     async def start_service(self) -> None:
         logger.debug("Starting service")
@@ -68,18 +69,18 @@ class AsyncUpdaterService:
         try:
             while self._running_state is self._ServiceRunningState.RUNNING:
                 logger.debug("Run update cycle")
-                await self._update_one_item_from_queue()
+                if not self._items_forced_update_queue.empty():
+                    await self._update_one_item_from_queue()
                 await self._update_items_full_cycle()
-                async with self._wait_signal_condition:
-                    if self._items_forced_update_queue.empty():
-                        await self._sleep_to_next_update_or_signal()
+                await self._sleep_to_next_update_or_signal()
         finally:
             await self._set_running_state(self._ServiceRunningState.STOPPED)
 
     async def _set_running_state(self, state: _ServiceRunningState) -> None:
-        async with self._wait_signal_condition:
+        logger.debug(f"Set running state to {state.name}")
+        async with self._running_state_condition:
             self._running_state = state
-            self._wait_signal_condition.notify_all()
+            self._running_state_condition.notify_all()
 
     async def _update_items_full_cycle(self) -> None:
         logger.debug("Requested items to update unpacked graph")
@@ -95,13 +96,9 @@ class AsyncUpdaterService:
 
     async def _update_one_item_from_queue(self) -> None:
         logger.debug("Requested forced item update")
-        if not self._items_forced_update_queue.empty():
-            logger.debug("Queue is not empty")
-            item_to_update: AbstractAsyncUpdatableItem = await self._items_forced_update_queue.get()
-            logger.debug(f"Updating item {item_to_update.__class__.__name__}")
-            await item_to_update.update()
-        else:
-            logger.debug("Queue is empty!!!")
+        item_to_update: AbstractAsyncUpdatableItem = await self._items_forced_update_queue.get()
+        logger.debug(f"Updating item {item_to_update.__class__.__name__}")
+        await item_to_update.update()
 
     async def _sleep_to_next_update_or_signal(self) -> None:
         next_update_datetime = helpers.calc_next_update_datetime(self._item_to_update)
@@ -110,7 +107,7 @@ class AsyncUpdaterService:
         logger.debug(f"Sleeping {timedelta_to_next_update}")
         try:
             await asyncio.wait_for(
-                self._wait_signal_condition.wait(),
+                self._wake_up_event.wait(),
                 timeout=timedelta_to_next_update.total_seconds()
             )
         except TimeoutError:
