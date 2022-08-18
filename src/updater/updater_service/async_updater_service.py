@@ -4,8 +4,8 @@ from enum import Enum
 from typing import Optional
 
 from updater.logging import logger
-from updater.updatable_item.abstract_async_updatable_item import AbstractAsyncUpdatableItem
-from updater.updater_service import helpers
+from updater.updatable_item import AbstractAsyncUpdatableItem
+from updater import helpers
 
 
 class AsyncUpdaterService:

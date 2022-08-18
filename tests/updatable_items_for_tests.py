@@ -1,8 +1,7 @@
 import asyncio
 from time import sleep
 
-from updater.updatable_item.abstract_async_updatable_item import AbstractAsyncUpdatableItem
-from updater.updatable_item.abstract_sync_updatable_item import AbstractSyncUpdatableItem
+from updater.updatable_item import AbstractAsyncUpdatableItem, AbstractSyncUpdatableItem
 
 
 class AsyncSleepingUpdatableItem(AbstractAsyncUpdatableItem):

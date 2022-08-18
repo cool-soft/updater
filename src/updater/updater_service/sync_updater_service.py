@@ -5,8 +5,8 @@ from enum import Enum
 from typing import Optional
 
 from updater.logging import logger
-from updater.updatable_item.abstract_sync_updatable_item import AbstractSyncUpdatableItem
-from updater.updater_service import helpers
+from updater.updatable_item import AbstractSyncUpdatableItem
+from updater import helpers
 
 
 class SyncUpdaterService:
