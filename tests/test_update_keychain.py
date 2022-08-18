@@ -1,8 +1,7 @@
 import time
-from datetime import timedelta, datetime
+from datetime import timedelta, datetime, timezone
 
 import pytest
-from dateutil import tz
 
 from updater.helpers import is_need_update_item
 from updater.update_keychain import UpdateKeychain
@@ -63,11 +62,11 @@ class TestUpdaterKeychain:
             assert is_need_update_item(keychain, datetime1) is True
 
     def test_need_update_timeout(self, keychain_6, keychain_7):
-        datetime1 = datetime.now(tz=tz.UTC)
+        datetime1 = datetime.now(tz=timezone.utc)
         for keychain in [keychain_6, keychain_7]:
             keychain.set_last_update_datetime(datetime1)
 
         time.sleep(2)
-        datetime2 = datetime.now(tz=tz.UTC)
+        datetime2 = datetime.now(tz=timezone.utc)
 
         assert is_need_update_item(keychain_7, datetime2) is True

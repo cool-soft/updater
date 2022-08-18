@@ -1,7 +1,6 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Union, Dict, Iterator
 
-from dateutil import tz
 from sqlalchemy import select, Column, INTEGER, VARCHAR, DATETIME
 from sqlalchemy.orm import scoped_session, declarative_base
 
@@ -16,10 +15,10 @@ class UpdateDatetimeDBRepository:
         statement = select(UpdateDatetimeDBRecord).filter(UpdateDatetimeDBRecord.name == record_name)
         record = session.execute(statement).scalars().first()
         if record is not None:
-            record.update_datetime = update_datetime.astimezone(tz.UTC)
+            record.update_datetime = update_datetime.astimezone(timezone.utc)
             session.merge(record)
         else:
-            record = UpdateDatetimeDBRecord(name=record_name, update_datetime=update_datetime.astimezone(tz.UTC))
+            record = UpdateDatetimeDBRecord(name=record_name, update_datetime=update_datetime.astimezone(timezone.utc))
             session.add(record)
 
     def get_last_update_datetime(self, record_name) -> Union[datetime, None]:
@@ -28,7 +27,7 @@ class UpdateDatetimeDBRepository:
         statement = select(UpdateDatetimeDBRecord).filter(UpdateDatetimeDBRecord.name == record_name)
         record = session.execute(statement).scalars().first()
         if record is not None:
-            last_update_datetime = record.update_datetime.replace(tzinfo=tz.UTC)
+            last_update_datetime = record.update_datetime.replace(tzinfo=timezone.utc)
         return last_update_datetime
 
     def get_all_last_updates_datetime(self) -> Dict[str, datetime]:
@@ -39,7 +38,7 @@ class UpdateDatetimeDBRepository:
         records: Iterator[UpdateDatetimeDBRecord] = session.execute(statement).scalars()
         for record in records:
             # noinspection PyTypeChecker
-            last_updates_datetime[record.name] = record.update_datetime.replace(tzinfo=tz.UTC)
+            last_updates_datetime[record.name] = record.update_datetime.replace(tzinfo=timezone.utc)
         return last_updates_datetime
 
 

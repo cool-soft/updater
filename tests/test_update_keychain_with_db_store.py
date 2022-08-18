@@ -1,8 +1,7 @@
 import time
-from datetime import timedelta, datetime
+from datetime import timedelta, datetime, timezone
 
 import pytest
-from dateutil import tz
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker, Session
 
@@ -115,20 +114,20 @@ class TestUpdaterKeychainWithDBStore:
         )
 
     def test_need_update_by_dependency(self, keychain_1, keychain_2, keychain_3, keychain_4):
-        datetime1 = datetime.now(tz=tz.UTC)
+        datetime1 = datetime.now(tz=timezone.utc)
         for keychain in [keychain_1, keychain_2, keychain_3, keychain_4]:
             keychain.set_last_update_datetime(datetime1)
 
         time.sleep(1)
-        datetime2 = datetime.now(tz=tz.UTC)
+        datetime2 = datetime.now(tz=timezone.utc)
         keychain_1.set_last_update_datetime(datetime2)
 
         for keychain in [keychain_2, keychain_3, keychain_4]:
             assert is_need_update_item(keychain, datetime1) is True
 
     def test_need_update_timeout(self, keychain_7):
-        datetime1 = datetime.now(tz=tz.UTC) - timedelta(seconds=1200)
+        datetime1 = datetime.now(tz=timezone.utc) - timedelta(seconds=1200)
         keychain_7.set_last_update_datetime(datetime1)
 
-        datetime2 = datetime.now(tz=tz.UTC)
+        datetime2 = datetime.now(tz=timezone.utc)
         assert is_need_update_item(keychain_7, datetime2) is True
