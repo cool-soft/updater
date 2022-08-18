@@ -45,13 +45,13 @@ class TestSyncUpdaterService:
 
     # noinspection SpellCheckingInspection
     @pytest.mark.timeout(60)
-    async def test_service(self,
-                           updater_service,
-                           item_1,
-                           item_2,
-                           item_3,
-                           item_4,
-                           item_to_update):
+    def test_service(self,
+                     updater_service,
+                     item_1,
+                     item_2,
+                     item_3,
+                     item_4,
+                     item_to_update):
         updater_service.start_service()
         while not updater_service.is_running():
             sleep(1)

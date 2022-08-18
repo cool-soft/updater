@@ -7,8 +7,9 @@ from updater.update_keychain import UpdateKeychain
 class AbstractUpdatableItem(UpdateKeychain):
 
     def _set_last_update_datetime_to_now(self) -> None:
-        self._last_update_datetime = datetime.now(tz=timezone.utc)
-        logger.debug(f"Last update datetime is set to {self._last_update_datetime}")
+        datetime_now = datetime.now(tz=timezone.utc)
+        self.set_last_update_datetime(datetime_now)
+        logger.debug(f"Last update datetime is set to {datetime_now}")
 
 
 class AbstractAsyncUpdatableItem(AbstractUpdatableItem):
