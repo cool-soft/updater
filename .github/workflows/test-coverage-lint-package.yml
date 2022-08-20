@@ -38,7 +38,7 @@ jobs:
       - name: "Push coverage xml report to codacy"
         uses: codacy/codacy-coverage-reporter-action@v1
         with:
-          project-token: ${{ secrets.CODACY_PROJECT_API_TOKEN }}
+          project-token: ${{ secrets.CODACY_API_TOKEN }}
           coverage-reports: ${{ env.COVERAGE_XML_REPORT_PATH }}
 
   run-codacy-analisis-cli:
