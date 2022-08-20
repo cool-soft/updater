@@ -37,7 +37,18 @@ jobs:
         run: coverage xml -o ${{ env.COVERAGE_XML_REPORT_PATH }}
       - name: "Push coverage xml report to codacy"
         uses: codacy/codacy-coverage-reporter-action@v1
-        if: ${{!cancelled()}}
         with:
           project-token: ${{ secrets.CODACY_PROJECT_API_TOKEN }}
           coverage-reports: ${{ env.COVERAGE_XML_REPORT_PATH }}
+
+  run-codacy-analisis-cli:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@v2
+      - name: "Run Codacy Analysis CLI"
+        uses: codacy/codacy-analysis-cli-action@master
+        with:
+          api-token: ${{ secrets.CODACY_API_TOKEN }}
+          upload: true
+          max-allowed-issues: 2147483647
