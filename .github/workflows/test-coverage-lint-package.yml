@@ -1,4 +1,4 @@
-name: Test and coverage package
+name: Test, coverage and lint package
 on:
   [push, pull_request]
 jobs:
